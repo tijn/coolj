@@ -11,18 +11,16 @@ module CoolJ
     end
 
     def parse_literal(literal)
-      @input.scan(Regexp.new(Regexp.escape(literal))) or raise DoesNotParse
+      @input.scan Regexp.new(Regexp.escape(literal))
     end
 
     def parse_case_insensitive_literal(literal)
-      @input.scan(Regexp.new(Regexp.escape(literal), Regexp::IGNORECASE)) or raise DoesNotParse
+      @input.scan Regexp.new(Regexp.escape(literal), Regexp::IGNORECASE)
     end
 
     def self.parser(name, bnf)
 #       puts name
-      method_name = "parse_#{name}"
-      #raise "method already defined #{method_name}" if respond_to? method_name.to_sym
-      str = ["def #{method_name}", "  " + bnf_to_ruby(bnf), "end"].join("\n")
+      str = ["def parse_#{name}", "  " + bnf_to_ruby(bnf), "end"].join("\n")
       puts '#' + "-"*10, "# #{name} ::= #{bnf}", str, ""
       self.class_eval str
     end
