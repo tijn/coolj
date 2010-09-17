@@ -1,14 +1,9 @@
-require 'English' # from the stdlib
-# $&  ->  $MATCH
-#    The string matched by the last successful pattern match. This variable is local to the current scope. Read only. Thread local.
-# $`  ->  $PREMATCH
-#    The string preceding the match in the last successful pattern match. This variable is local to the current scope. Read only. Thread local.
-# $'  ->  $POSTMATCH
-#    The string following the match in the last successful pattern match. This variable is local to the current scope. Read only. Thread local.
+require 'English'
 
 module CoolJ
 
   class DoesNotParse < StandardError; end
+
 
   class Parser
     def initialize(input)
@@ -24,21 +19,18 @@ module CoolJ
     end
 
     def self.parser(name, bnf)
-      puts name
+#       puts name
       method_name = "parse_#{name}"
       #raise "method already defined #{method_name}" if respond_to? method_name.to_sym
       str = ["def #{method_name}", "  " + bnf_to_ruby(bnf), "end"].join("\n")
       puts '#' + "-"*10, "# #{name} ::= #{bnf}", str, ""
       self.class_eval str
-#     rescue
-#       raise DoesNotParse, bnf
     end
   end
 
 
   class BnfParser
     # first the terminals:
-
     IDENTIFIER = /(\w+)/ # like: name or foo or while or do
     LITERAL = /\"(\w+)\"|\'(\w+)\'/ # TODO fix character class
     CASE_INSENSITIVE_LITERAL = /\"(\w+)\"i|\'(\w+)\'/
@@ -53,12 +45,11 @@ module CoolJ
 
     ALTERNATION = /#{EXPRESSION} | #{EXPRESSION}/
     CONCATENATION = /#{EXPRESSION} , #{EXPRESSION}/
-
   end
 
 
   module Rfc5234
-    EXPRESSION = /(\ə\d+)/ # like ə1
+    EXPRESSION = /(\ə\d+)/ # something like ə1
 
     def next_expression
       @expression_number = @expression_number.to_i + 1
@@ -80,7 +71,7 @@ module CoolJ
     ALTERNATIVES =  /#{EXPRESSION} \/ #{EXPRESSION}/ # foo / bar
     # I don't support Incremental Alternatives
     # no support for Value Range Alternatives
-    GROUPING = /\(#{EXPRESSION}\)/ # (foo bar baz / whatever)
+    GROUPING = /\(\s*#{EXPRESSION}\s*\)/ # (foo bar baz / whatever)
     REPETITION = /(\d*)\*(\d*)#{EXPRESSION}/ # *foo  or  4*10line
     SPECIFIC_REPETITION = /(\d+)#{EXPRESSION}/ # 3foo  or  42(foz quux)
     OPTIONAL = /\[#{EXPRESSION}\]/ # [foo bar]
@@ -100,7 +91,6 @@ module CoolJ
     end
 
     def alternatives(left, right)
-      puts "alternatives #{left}, #{right}"
       "#{left} or #{right}"
     end
 
@@ -120,7 +110,7 @@ module CoolJ
       when BINARY, DECIMAL, HEXADECIMAL, LITERAL
         bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, literal($1))
       when RULE_NAME
-        puts "rule name #{$~}"
+#         puts "rule name #{$~}"
         bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, rule_name($1))
 
       when REPETITION, SPECIFIC_REPETITION
@@ -136,28 +126,28 @@ module CoolJ
       when /^#{EXPRESSION}$/
         bnf
       else
-        raise DoesNotParse, "What is #{bnf}??"
+        raise DoesNotParse, "What is '#{bnf}'?"
       end
     end
   end
 
-#   class Foo
-#
-#
-#     puts bnf_to_ruby('"foo"'), "-"*40
-#   #   Rfc5234.parse('%x4242ab')
-#     puts bnf_to_ruby('"bar" "baz"'), "-"*40
-#     puts bnf_to_ruby('"foo" "bar"; foo followed by bar'), "-"*40
-#     puts bnf_to_ruby('("foz" "bar")'), "-"*40
-#     puts bnf_to_ruby('["foz"] "bar"'), "-"*40
-#   end
-
-
-
-  class Foo < Parser
+  class Foo
     extend Rfc5234
 
-    parser :foo, '"foo"'
+    puts bnf_to_ruby('"foo"'), "-"*40
+    bnf_to_ruby('%x4242ab')
+    puts bnf_to_ruby('"bar" "baz"'), "-"*40
+    puts bnf_to_ruby('"foo" "bar"; foo followed by bar'), "-"*40
+    puts bnf_to_ruby('("foz" "bar")'), "-"*40
+    puts bnf_to_ruby('["foz"] "bar"'), "-"*40
+  end
+
+
+
+  class Bar < Parser
+    extend Rfc5234
+
+    parser :foo, '"foo"' # define a parser method for "foo" called #parse_foo
     parser :bar, "foo"
     parser :baz, "[foo]"
     parser :quux, "foo baz"
@@ -168,6 +158,11 @@ module CoolJ
     parser :foobarbaz, "foo bar / baz" # i have no idea about precedence here
     parser :foobarbaz, "(foo bar) / baz"
     parser :foobarbaz, "foo (bar / baz)"
+    parser :foobarbaz, "foo (bar / baz )"
+    parser :foobarbaz, "foo ( bar / baz)"
+    parser :foobarbaz, "foo ( bar / baz )"
+
+  #     parser :foobarbaz, "foo (bar | baz)"
   end
 
 end
