@@ -46,6 +46,7 @@ module CoolJ
   end
 
 
+  # http://tools.ietf.org/html/rfc5234
   module Rfc5234
     EXPRESSION = /(\ə\d+)/ # something like ə1
 
@@ -129,6 +130,7 @@ module CoolJ
     end
   end
 
+
   class Foo
     extend Rfc5234
 
@@ -139,7 +141,6 @@ module CoolJ
     puts bnf_to_ruby('("foz" "bar")'), "-"*40
     puts bnf_to_ruby('["foz"] "bar"'), "-"*40
   end
-
 
 
   class Bar < Parser
@@ -159,7 +160,7 @@ module CoolJ
     parser :foobarbaz, "foo (bar / baz )"
     parser :foobarbaz, "foo ( bar / baz)"
     parser :foobarbaz, "foo ( bar / baz )"
-
+    parser :elem, "(elem (foo / bar) elem)"
   #     parser :foobarbaz, "foo (bar | baz)"
   end
 
