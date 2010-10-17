@@ -1,4 +1,7 @@
-coolj - a simple LL-parser builder
+coolj
+=====
+
+a simple LL-parser builder
 
 
 This library should eventually replace topdown (this other parser builder I once wrote). It should be simpler and faster.
