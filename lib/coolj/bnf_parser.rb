@@ -10,18 +10,21 @@ module CoolJ
       @input = StringScanner.new(input)
     end
 
-    def parse_literal(literal)
-      @input.scan Regexp.new(Regexp.escape(literal))
+    def parse_literal(regexp)
+      @input.scan regexp
     end
 
-    def parse_case_insensitive_literal(literal)
-      @input.scan Regexp.new(Regexp.escape(literal), Regexp::IGNORECASE)
+#     def parse_case_insensitive_literal(literal)
+#       @input.scan Regexp.new(Regexp.escape(literal), Regexp::IGNORECASE)
+#     end
+
+    def try_to_run(&block, return_point = @input.pos)
+      yield or (@input.pos = return_point and false)
     end
 
     def self.parser(name, bnf)
-#       puts name
-      str = ["def parse_#{name}", "  " + bnf_to_ruby(bnf), "end"].join("\n")
-      puts '#' + "-"*10, "# #{name} ::= #{bnf}", str, ""
+      str = ["def parse_#{name}", "  try_to_run { #{bnf_to_ruby(bnf)} }", "end"].join("\n")
+      puts '#' + "-"*20, "# #{name} ::= #{bnf}", str, ""
       self.class_eval str
     end
   end
@@ -48,17 +51,17 @@ module CoolJ
 
   # http://tools.ietf.org/html/rfc5234
   module Rfc5234
-    EXPRESSION = /(\ə\d+)/ # something like ə1
+    EXPRESSION = /(\EXP\d+)/ # something like
 
     def next_expression
       @expression_number = @expression_number.to_i + 1
-      "ə#{@expression_number}"
+      "EXP#{@expression_number}"
     end
 
     # Terminal Values
-    BINARY = /\%b[0-1]+/
-    DECIMAL = /\%d[0-9]+/
-    HEXADECIMAL = /\%x[0-9A-Fa-f]+/
+    BINARY = /(\%b[0-1]+)/
+    DECIMAL = /(\%d[0-9]+)/
+    HEXADECIMAL = /(\%x[0-9A-Fa-f]+)/
     # no support for dot-concatenation yet
 
     LITERAL = /\"([^"]+)\"/ # ABNF strings are case insensitive and the character set for these strings is US-ASCII.
@@ -77,8 +80,14 @@ module CoolJ
 
     COMMENT = /;(.*)$/
 
-    def literal(literal)
-      "parse_literal(#{literal.inspect})"
+    def literal(expression, literal)
+      if literal.size < 20
+        constant = "LITERAL_#{literal.gsub(/[^\w]/, "_").upcase}"
+      else
+        constant = "LITERAL_#{expression.upcase}"
+      end
+      const_set(constant, Regexp.new(Regexp.escape(literal)))
+      "parse_literal(#{constant})"
     end
 
     def rule_name(name)
@@ -102,17 +111,18 @@ module CoolJ
     end
 
     def bnf_to_ruby(bnf, exp = next_expression)
-      puts "parse\t#{bnf}"
+      puts "# parse\t#{bnf}"
       case bnf
       when COMMENT
         bnf_to_ruby($PREMATCH) + "##{$1}"
       when BINARY, DECIMAL, HEXADECIMAL, LITERAL
-        bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, literal($1))
+        bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, literal(exp, $1))
       when RULE_NAME
 #         puts "rule name #{$~}"
         bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, rule_name($1))
 
       when REPETITION, SPECIFIC_REPETITION
+        # TODO
         bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, code_for($1))
       when GROUPING
         bnf_to_ruby($PREMATCH + exp + $POSTMATCH).sub(exp, grouping($1))
